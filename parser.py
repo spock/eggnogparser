@@ -73,6 +73,11 @@ oneletter_to_super = {'J': 'INFORMATION STORAGE AND PROCESSING',
                       'R': 'POORLY CHARACTERIZED', 'S': 'POORLY CHARACTERIZED'
                       }
 
+information_codes_list = ['J', 'A', 'K', 'L', 'B']
+signaling_codes_list = ['D', 'Y', 'V', 'T', 'M', 'N', 'Z', 'W', 'U', 'O']
+metabolism_codes_list = ['C', 'G', 'E', 'F', 'H', 'I', 'P', 'Q']
+unknown_codes_list = ['R', 'S']
+
 # Format string for the final statistics display.
 final = '''
 INFORMATION STORAGE AND PROCESSING: %s
@@ -114,6 +119,9 @@ category_counters = {'J':0, 'A':0, 'K':0, 'L':0, 'B':0, 'D':0, 'Y':0, 'V':0, 'T'
                      'N':0, 'Z':0, 'W':0, 'U':0, 'O':0, 'C':0, 'G':0, 'E':0, 'F':0, 'H':0,
                      'I':0, 'P':0, 'Q':0, 'R':0, 'S':0 }
 
+# (Empty) dict for super-category counters.
+super_counters = {'CELLULAR PROCESSES AND SIGNALING': 0, 'POORLY CHARACTERIZED': 0,
+                  'INFORMATION STORAGE AND PROCESSING': 0,  'METABOLISM': 0}
 
 def parse_bactnog_members(fname):
     '''
@@ -149,17 +157,29 @@ def parse_bactnog_funccat(fname):
     return mapping
 
 
-def main(argv=None):
+def main():
     '''Command line options.'''
-    
-    if argv is None:
-        argv = sys.argv
-    else:
-        sys.argv.extend(argv)
+
+    nohits_counter = 0
+    for blast_result in all_results:
+        if no_hits:
+            nohits_counter += 1
+            continue
+        category_counter[sequence2category(sequence_id)] += 1
+
+    for code in metabolism_codes_list:
+        super_counters['METABOLISM'] += category_counters[code]
+
+    print_final_stats
 
     # Setup argument parser
     parser = ArgumentParser()
-    parser.add_argument(dest="paths", help="paths to folder(s) with source file(s) [default: %(default)s]", metavar="path", nargs='+')
+    parser.add_argument(dest="blast_xml", metavar="BLAST_result.xml",
+                        help="path to the BLAST XML result file")
+    parser.add_argument(dest="funccat", metavar="bactNOG.funccat.txt", default='bactNOG.funccat.txt',
+                        help="path to the bactNOG.funccat.txt file [default: %(default)s]")
+    parser.add_argument(dest="members", metavar="bactNOG.members.txt", default='bactNOG.members.txt',
+                        help="path to the bactNOG.members.txt file [default: %(default)s]")
     
     # Process arguments
     args = parser.parse_args()
