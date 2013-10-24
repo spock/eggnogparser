@@ -1,4 +1,4 @@
-#!/usr/local/bin/python2.7
+#!/usr/bin/python
 # encoding: utf-8
 '''
 Parses eggNOG text files and the supplied BLAST result XML file to produce
@@ -21,6 +21,7 @@ blastall -a 16 -b 1 -v 1 -p blastp -e 0.001 -m 7 -d sequences/all.fa -i genome.f
 
 import sys
 from argparse import ArgumentParser
+from Bio import SearchIO as SIO
 
 
 # Mapping of single-letter category names to their full names.
@@ -123,6 +124,7 @@ category_counters = {'J':0, 'A':0, 'K':0, 'L':0, 'B':0, 'D':0, 'Y':0, 'V':0, 'T'
 super_counters = {'CELLULAR PROCESSES AND SIGNALING': 0, 'POORLY CHARACTERIZED': 0,
                   'INFORMATION STORAGE AND PROCESSING': 0,  'METABOLISM': 0}
 
+
 def parse_bactnog_members(fname):
     '''
     Given 'fname', the path to bactNOG.members.txt file, parses it into a dictionary
@@ -135,7 +137,7 @@ def parse_bactnog_members(fname):
     mapping = {}
     with open(fname) as fh:
         for line in fh:
-            number, sequence = line.split(maxsplit = 2)
+            number, sequence, unk1, unk2 = line.split()
             mapping[sequence] = number
     return mapping
 
@@ -157,21 +159,21 @@ def parse_bactnog_funccat(fname):
     return mapping
 
 
+def sequence2category(sequence_id, s2b, b2c):
+    '''
+    Given a sequence_id of the bactNOG database hit, returns one-letter bactNOG category.
+    Returns None if some of the mappings are absent.
+    s2b: sequence id to bactnog dictionary
+    b2c: bactnog number to category dictionary
+    '''
+    if sequence_id in s2b:
+        if s2b[sequence_id] in b2c:
+            return b2c[s2b[sequence_id]]
+    return None
+
+
 def main():
     '''Command line options.'''
-
-    nohits_counter = 0
-    for blast_result in all_results:
-        if no_hits:
-            nohits_counter += 1
-            continue
-        category_counter[sequence2category(sequence_id)] += 1
-
-    for code in metabolism_codes_list:
-        super_counters['METABOLISM'] += category_counters[code]
-
-    print_final_stats
-
     # Setup argument parser
     parser = ArgumentParser()
     parser.add_argument(dest="blast_xml", metavar="BLAST_result.xml",
@@ -180,9 +182,66 @@ def main():
                         help="path to the bactNOG.funccat.txt file [default: %(default)s]")
     parser.add_argument(dest="members", metavar="bactNOG.members.txt", default='bactNOG.members.txt',
                         help="path to the bactNOG.members.txt file [default: %(default)s]")
-    
     # Process arguments
     args = parser.parse_args()
+
+    bactnog2category = parse_bactnog_funccat(args.funccat)
+    seqid2bactnog = parse_bactnog_members(args.members)
+
+    # ORFs which did not have a match.
+    nohits_counter = 0
+    # ORFs which had a match but were not assigned to categories.
+    nocat_counter = 0
+    # Header for hits.
+    print "Query\t\tHit\t\tCategory\t\tSuper-category"
+    for blast_result in SIO.parse(args.blast_xml, 'blast-xml'):
+        if len(blast_result) == 0:
+            nohits_counter += 1
+            print "%s: No hits" % blast_result.description
+            continue
+        # Print a hit with category and super-category.
+        category = sequence2category(blast_result[0].description, seqid2bactnog,
+                                     bactnog2category)
+        if category != None:
+            category_counters[category] += 1
+            print "%s\t\t%s\t\t%s\t\t%s" % (blast_result.description,
+                                            blast_result[0].description,
+                                            oneletter_to_full[category],
+                                            oneletter_to_super[category])
+        else:
+            nocat_counter += 1
+            print "%s\t\t%s" % (blast_result.description, blast_result[0].description)
+
+    # Sum up individual categories to get super-level stats.
+    for code in information_codes_list:
+        super_counters['INFORMATION STORAGE AND PROCESSING'] += category_counters[code]
+    for code in signaling_codes_list:
+        super_counters['CELLULAR PROCESSES AND SIGNALING'] += category_counters[code]
+    for code in metabolism_codes_list:
+        super_counters['METABOLISM'] += category_counters[code]
+    for code in unknown_codes_list:
+        super_counters['POORLY CHARACTERIZED'] += category_counters[code]
+
+    print 'Queries with no hits:', nohits_counter
+    print 'Queries with no categories:', nocat_counter
+    print final.format(super_counters['INFORMATION STORAGE AND PROCESSING'],
+                       category_counters['J'], category_counters['A'],
+                       category_counters['K'], category_counters['L'],
+                       category_counters['B'],
+                       super_counters['CELLULAR PROCESSES AND SIGNALING'],
+                       category_counters['D'], category_counters['Y'],
+                       category_counters['V'], category_counters['T'],
+                       category_counters['M'], category_counters['N'],
+                       category_counters['Z'], category_counters['W'],
+                       category_counters['U'], category_counters['O'],
+                       super_counters['METABOLISM'],
+                       category_counters['C'], category_counters['G'],
+                       category_counters['E'], category_counters['F'],
+                       category_counters['H'], category_counters['I'],
+                       category_counters['P'], category_counters['Q'],
+                       super_counters['POORLY CHARACTERIZED'],
+                       category_counters['R'], category_counters['S']
+                       )
 
 
 if __name__ == "__main__":
