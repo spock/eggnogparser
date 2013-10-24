@@ -81,38 +81,38 @@ unknown_codes_list = ['R', 'S']
 
 # Format string for the final statistics display.
 final = '''
-INFORMATION STORAGE AND PROCESSING: %s
- [J] Translation, ribosomal structure and biogenesis: %s 
- [A] RNA processing and modification: %s
- [K] Transcription: %s
- [L] Replication, recombination and repair: %s
- [B] Chromatin structure and dynamics: %s
+INFORMATION STORAGE AND PROCESSING: {s[INFORMATION STORAGE AND PROCESSING]}
+ [J] Translation, ribosomal structure and biogenesis: {c[J]}
+ [A] RNA processing and modification: {c[A]}
+ [K] Transcription: {c[K]}
+ [L] Replication, recombination and repair: {c[L]}
+ [B] Chromatin structure and dynamics: {c[B]}
 
-CELLULAR PROCESSES AND SIGNALING: %s
- [D] Cell cycle control, cell division, chromosome partitioning: %s
- [Y] Nuclear structure: %s
- [V] Defense mechanisms: %s
- [T] Signal transduction mechanisms: %s
- [M] Cell wall/membrane/envelope biogenesis: %s
- [N] Cell motility: %s
- [Z] Cytoskeleton: %s
- [W] Extracellular structures: %s
- [U] Intracellular trafficking, secretion, and vesicular transport: %s
- [O] Posttranslational modification, protein turnover, chaperones: %s
+CELLULAR PROCESSES AND SIGNALING: {s[CELLULAR PROCESSES AND SIGNALING]}
+ [D] Cell cycle control, cell division, chromosome partitioning: {c[D]}
+ [Y] Nuclear structure: {c[Y]}
+ [V] Defense mechanisms: {c[V]}
+ [T] Signal transduction mechanisms: {c[T]}
+ [M] Cell wall/membrane/envelope biogenesis: {c[M]}
+ [N] Cell motility: {c[N]}
+ [Z] Cytoskeleton: {c[Z]}
+ [W] Extracellular structures: {c[W]}
+ [U] Intracellular trafficking, secretion, and vesicular transport: {c[U]}
+ [O] Posttranslational modification, protein turnover, chaperones: {c[O]}
 
-METABOLISM: %s
- [C] Energy production and conversion: %s
- [G] Carbohydrate transport and metabolism: %s
- [E] Amino acid transport and metabolism: %s
- [F] Nucleotide transport and metabolism: %s
- [H] Coenzyme transport and metabolism: %s
- [I] Lipid transport and metabolism: %s
- [P] Inorganic ion transport and metabolism: %s
- [Q] Secondary metabolites biosynthesis, transport and catabolism: %s
+METABOLISM: {s[METABOLISM]}
+ [C] Energy production and conversion: {c[C]}
+ [G] Carbohydrate transport and metabolism: {c[G]}
+ [E] Amino acid transport and metabolism: {c[E]}
+ [F] Nucleotide transport and metabolism: {c[F]}
+ [H] Coenzyme transport and metabolism: {c[H]}
+ [I] Lipid transport and metabolism: {c[I]}
+ [P] Inorganic ion transport and metabolism: {c[P]}
+ [Q] Secondary metabolites biosynthesis, transport and catabolism: {c[Q]}
 
-POORLY CHARACTERIZED: %s
- [R] General function prediction only: %s
- [S] Function unknown: %s
+POORLY CHARACTERIZED: {s[POORLY CHARACTERIZED]}
+ [R] General function prediction only: {c[R]}
+ [S] Function unknown: {c[S]}
 '''
 
 # (Empty) dict of per-category counters.
@@ -193,24 +193,25 @@ def main():
     # ORFs which had a match but were not assigned to categories.
     nocat_counter = 0
     # Header for hits.
-    print "Query\t\tHit\t\tCategory\t\tSuper-category"
+    print "Query\tHit\tCategory\tSuper-category"
     for blast_result in SIO.parse(args.blast_xml, 'blast-xml'):
+        seqid = blast_result.id.split('.')[0][8:]
         if len(blast_result) == 0:
             nohits_counter += 1
-            print "%s: No hits" % blast_result.description
+            print "%s\tNo hits" % seqid
             continue
-        # Print a hit with category and super-category.
-        category = sequence2category(blast_result[0].description, seqid2bactnog,
-                                     bactnog2category)
+        category = sequence2category(blast_result[0].id, seqid2bactnog, bactnog2category)
         if category != None:
-            category_counters[category] += 1
-            print "%s\t\t%s\t\t%s\t\t%s" % (blast_result.description,
-                                            blast_result[0].description,
-                                            oneletter_to_full[category],
-                                            oneletter_to_super[category])
+            for i in range(len(category)):
+                cat = category[i]
+                category_counters[cat] += 1
+                # Print a hit with category and super-category.
+                print "%s\t%s\t%s\t%s" % (seqid, blast_result[0].id,
+                                                oneletter_to_full[cat],
+                                                oneletter_to_super[cat])
         else:
             nocat_counter += 1
-            print "%s\t\t%s" % (blast_result.description, blast_result[0].description)
+            print "%s\t%s\tNo category" % (seqid, blast_result[0].id)
 
     # Sum up individual categories to get super-level stats.
     for code in information_codes_list:
@@ -224,24 +225,7 @@ def main():
 
     print 'Queries with no hits:', nohits_counter
     print 'Queries with no categories:', nocat_counter
-    print final.format(super_counters['INFORMATION STORAGE AND PROCESSING'],
-                       category_counters['J'], category_counters['A'],
-                       category_counters['K'], category_counters['L'],
-                       category_counters['B'],
-                       super_counters['CELLULAR PROCESSES AND SIGNALING'],
-                       category_counters['D'], category_counters['Y'],
-                       category_counters['V'], category_counters['T'],
-                       category_counters['M'], category_counters['N'],
-                       category_counters['Z'], category_counters['W'],
-                       category_counters['U'], category_counters['O'],
-                       super_counters['METABOLISM'],
-                       category_counters['C'], category_counters['G'],
-                       category_counters['E'], category_counters['F'],
-                       category_counters['H'], category_counters['I'],
-                       category_counters['P'], category_counters['Q'],
-                       super_counters['POORLY CHARACTERIZED'],
-                       category_counters['R'], category_counters['S']
-                       )
+    print final.format(c=category_counters, s=super_counters)
 
 
 if __name__ == "__main__":
