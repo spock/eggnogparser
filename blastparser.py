@@ -17,7 +17,7 @@ Sample usage: ::
          print '  ', hit.total_score, hit.total_expect
          for submatch in hit:
             print submatch.expect, submatch.bits
-            
+
             print submatch.query_sequence
             print submatch.alignment
             print submatch.subject_sequence

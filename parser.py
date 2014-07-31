@@ -195,7 +195,7 @@ def main():
     # Header for hits.
     print "Query\tHit\tCategory\tSuper-category"
     for blast_result in SIO.parse(args.blast_xml, 'blast-xml'):
-        seqid = blast_result.id.split('.')[0][8:]
+        seqid = blast_result.id.split(':')[0]
         if len(blast_result) == 0:
             nohits_counter += 1
             print "%s\tNo hits" % seqid
