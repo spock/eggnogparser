@@ -137,8 +137,12 @@ def parse_bactnog_members(fname):
     mapping = {}
     with open(fname) as fh:
         for line in fh:
-            number, sequence, unk1, unk2 = line.split()
-            mapping[sequence] = number
+            try:
+                number, sequence, unk1, unk2 = line.split('\t')
+                mapping[sequence] = number
+            except:
+                print line
+                raise
     return mapping
 
 
