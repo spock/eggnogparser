@@ -1,0 +1,6 @@
+TODO
+====
+- describe what it does
+- produce 2 output files instead of 1 (bigger to stdout, smaller to stderr?)
+- package/release
+- rename main file to eggnogparser.py
